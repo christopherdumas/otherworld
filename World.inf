@@ -1,0 +1,333 @@
+! This file contains world rules, daemons, scenery, and universal
+! items.
+
+!! World Rules
+Attribute clean;
+Attribute filter;
+
+Class   Liquid(16)
+ with   name 'water',
+        article "some",
+        fraction 2,
+        short_name [;
+            if (self has clean) print "clean water (1/", self.fraction, ")";
+            else                print "dirty water (1/", self.fraction, ")";
+            rtrue;
+        ],
+        infinite false,
+        each_turn [;
+            if (self.fraction >= 16)
+                remove self;
+        ],
+        before [ x;
+         Drink:
+            if (self has clean && (self.infinite || self.fraction < 16)) {
+                x = Liquid.create();
+                if (~self.infinite) x.fraction = self.fraction * 2;
+                move x to parent(self);
+                remove self;
+                player.thirst = 0;
+                print_ret "You drink half of the water. You feel refreshed.";
+            } else if (self.fraction >= 16 && ~self.infinite) {
+                remove self;
+                print_ret "There is not enough water to pour.";
+            } else
+                print_ret "You gasp and sputter and retch the ghastly
+                    substance out of your mouth, regretting putting it in there in the
+                    first place. You're going to need a filter.";
+         Take:
+            if (self has clean)
+                print_ret "The liquid slips through your fingers.";
+            else
+                print_ret "The liquid slips through your fingers, leaving
+                    an ugly muck behind.";
+         Insert, Transfer:
+            if (parent(self) ofclass Bucket) <<EmptyT (parent(self)) second>>;
+            if (second ofclass Bucket)       <<Fill second>>;
+            "I'm not sure that's a suitable container.";
+         Drop, Empty, EmptyT:
+            if (parent(self) ofclass Bucket) <<(action) (parent(self)) second>>;
+        ],
+        react_before [;
+         Fill:
+            if (noun ofclass Bucket) rfalse;
+            "I'm not sure that's a suitable container.";
+        ],
+        percolate [c f; f = nothing;
+            objectloop (f in player && f has filter) {
+                give self clean;
+                <EmptyT (parent(self)) c>;
+                print_ret "You use ", (the) f, " to filter ", (the) self,
+                    " into ", (the) c, ".";
+            }
+            print_ret "You don't have anything to filter the water
+                with!";
+        ],
+        description [;
+            if (self has clean)
+                "Clean(ish) and drinkable.";
+            else
+                "Gross, thick, and ugly.";
+        ];
+
+Class   Bucket
+ with   before [ x y; x = child(self);
+         Drink:
+            print "Drinking from ", (the) self, "... ";
+            <<Drink (child(self))>>;
+         Empty:
+            if (~~x ofclass Liquid) rfalse;      ! follow standard action
+            Liquid.destroy(x);
+            print_ret (The) x, " pours onto the ground and disappears.";
+         EmptyT:
+            if (~~x ofclass Liquid) rfalse;      ! follow standard action
+            if (second ofclass Bucket) {
+                y = child(second);
+                if (~~y) {                      ! second is empty
+                    move x to second;
+                    "You pour ", (the) x, " into ", (the) second, ".";
+                }
+                if (y ofclass Liquid)
+                    print_ret (The) second, " is already full of ", (name) y, ".";
+                else
+                    print_ret (The) second, " has other stuff in it.";
+            }
+            else {
+                if (second == d_obj) <<Empty self>>;
+                "I'm not sure that's a suitable container.";
+            }
+         Fill:
+            if (~~x) {                          ! is there a water source in scope?
+                objectloop (x ofclass Liquid && x.infinite && TestScope(x)) {
+                    x = Liquid.create(); move x to self;
+                    "You fill ", (the) self, " with ", (name) x, ".";
+                }
+                rfalse;                         ! no water available
+            }
+            if (x ofclass Liquid)
+                print_ret (The) self, " is already full of ", (name) x, ".";
+            else
+                print_ret (The) self, " has other stuff in it.";
+         Receive:
+            if (x ofclass Liquid)
+                print_ret (The) self, " is already full of ", (name) x, ".";
+        ],
+ has    container open;
+
+Class   Food
+ with   nutrition_value 0,
+        cooked 0,
+        description "A random peice of food.",
+        short_name [;
+            print "", (string) DescribeStat(self.cooked), " cooked ";
+            rfalse;
+        ],
+        before [;
+         Eat:
+            player.hunger = player.hunger - (self.nutrition_value + self.cooked);
+            if (player.hunger < 0) player.hunger = 0;
+            rfalse;
+         Burn:
+            if (self.cooked < 5) {
+                self.cooked++;
+                print_ret (The) self, " is now ", (string)
+                    DescribeStat(self.cooked), " cooked.";
+            } else "You really wouldn't want to cook that anymore!";
+        ],
+ has    edible;
+
+!! Daemons
+
+Array month_days -> 0 31 28 31 30 31 30 31 31 30 31 30 31;
+
+Global day = 17;
+Global month = 4;
+Global year = 1000;
+
+Constant SUNRISE = 360;  ! i.e. 6 am
+Constant SUNSET = 1140;  ! i.e. 7 pm
+Constant MAPPING = true; ! Remember to turn this off!
+
+Object  Sun "sun"
+ with   name 'sun',
+        found_in [;
+            if (real_location ofclass Exterior) rtrue;
+        ],
+        before [;
+         Examine: ;
+         default: "The sun is too far away.";
+        ],
+        daemon [;
+            if (~MAPPING) {
+                if (the_time >= SUNRISE && the_time < SUNSET) {
+                    if (self has absent) {
+                        give self ~absent;
+                        
+                        if (real_location ofclass Exterior) {
+                            move self to real_location;
+                            "^Night turns to day in glorious dawn,
+                            the clouds changing strange, beautiful colors
+                            in transition from the darkness of night and
+                            its deep purple to the orange of dawn and the
+                            virgin white of daylight.";
+                        }
+                    }
+                } else {
+                    if (self hasnt absent) {
+                        give self absent; remove self;
+                        day++;
+                        if (day > month_days->month) {
+                            day = 1;
+                            month++;
+                            print "Another day, another month. The date is
+                                now ", month, "/", day, "/", year,".";
+                        }
+                        if (month > 12) {
+                            month = 1;
+                            year++;
+                            print "Another month, another year. The date is
+                                now ", month, "/", day, "/", year,".";
+                        }
+                        if (real_location ofclass Exterior)
+                            "^Day slowly recedes into night, slowly
+                            giving way like a dying sigh.";
+                    }
+                }
+            }
+        ],
+ has    light scenery;
+
+Object  Snow
+ with   weather_num 0,
+        short_name "snowy";
+
+Object  Cold
+ with   weather_num 1,
+        short_name "cold";
+
+Object  Rain
+ with   weather_num 2,
+        short_name "rainy";
+
+Object  Sunny
+ with   weather_num 3,
+        short_name "sunny";
+
+Object  Weather "weather"
+ with   current_weather Sunny,
+        name 'weather',
+        article "the",
+        found_in [; return location ofclass Exterior; ],
+        description [;
+            "", (The) self, " is ", (string) self.current_weather.short_name, ".";
+        ],
+        each_turn [ old;
+            if (day % 3 == 0) {
+                old = self.current_weather;
+                if (month <= 2 || month == 12)
+                    self.current_weather = random(Cold, Cold, Snow);
+                else if (month >= 6 && month <= 9)
+                    self.current_weather = random(Sunny, Rain, Rain);
+                else if (month <= 5 && month >= 3)
+                    self.current_weather = Sunny;
+                else if (month == 10 || month == 11)
+                    self.current_weather = Cold;
+                
+                move self.current_weather to self;
+                remove old;
+            }
+        ],
+ has    scenery transparent;
+
+!! Player
+[ DescribeStat x;
+    switch (x) {
+     0: return "not";
+     1: return "barely";
+     2: return "a little";
+     3: return "a bit";
+     4: return "pretty";
+     5: return "";
+     6: return "very";
+     7: return "really";
+     8: return "extremely";
+     9: return "incredibly";
+     10: return "unimaginably";
+     11: return "too";
+     12: return "deathly";
+    }
+];
+Object  CustomPlayer "(you)"
+ with   short_name  [; return L__M(##Miscellany, 18); ],
+        thirst 0,
+        hunger 0,
+        sleeping false,
+        fatigue 0,
+        health 5,
+        description [ str;
+            if (children(self) == 0) str = "Forlorn and empty-handed,
+                but otherwise a ";
+            else str = "A ";
+            
+            "", (string) str, " pretty ordinary person, really. You are ",
+                (string) DescribeStat(player.thirst/12), " thirsty, ",
+                (string) DescribeStat(player.hunger/84), " hungry, ",
+                (string) DescribeStat(player.fatigue/44), " tired, and ",
+                (string) DescribeStat(player.health), " healthy.";
+        ],
+        react_before [;
+         Wait: self.fatigue--;
+         Sleep:
+            if (self.sleeping)
+                "You would rather not decend into a meta-dream.";
+            else {
+                self.sleeping = true;
+                "You fall peacefully asleep.";
+            }
+         Wake:
+            if (self.sleeping){
+                self.fatigue = 0;
+                "You wake up slowly, feeling rested and relaxed.";
+            } else rfalse;
+        ],
+        each_turn [;
+            if (self.fatigue > 528) deadflag = 6;
+            if (self.hunger > 1008) deadflag = 5;
+            if (self.thirst > 144) deadflag = 4;
+            if (self.health <= 0) deadflag = 3;
+            
+            self.thirst++;
+            self.hunger++;
+            self.fatigue++;
+            
+            if (self.thirst > 6 || self.hunger > 240
+                || self.fatigue > 60)
+                "^[You should check your stats. Use EXAMINE ME.]";
+        ],
+ has    animate concealed proper transparent;
+
+Object  -> bread_loaf "bread loaf"
+ class  Food
+ with   name 'bread' 'loaf',
+        description "Black bread, in a roughly loaf-like shape. It was
+            fresh.",
+        nutrition_value 5;
+
+Object  -> swiss_cheese "swiss cheese block"
+ class  Food
+ with   name 'swiss' 'cheese' 'block',
+        description "Some good old swiss cheese.",
+        nutrition_value 8;
+
+Object  -> moose_meat "hunk of moose meat"
+ class  Food
+ with   name 'hunk' 'moose' 'meat',
+        description "Exactly what it looks like: moose meat.",
+        nutrition_value 16;
+
+Object  -> old_bucket "old bucket"
+ class  Bucket
+ with   name 'bucket' 'bin',
+        description "An old bucket you brought along to drink water
+            from. You ran out of your water awhile back, and haven't found a
+            stream yet.";

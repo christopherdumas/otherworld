@@ -1,0 +1,144 @@
+Constant Story "The Otherworld";
+Constant Headline "^By Christopher Dumas^";
+
+Constant ROOM_SCORE = 2;
+Constant MAX_SCORE = 600;
+
+Replace DrawStatusLine;
+Statusline time;
+Include "Parser";
+Object  LibraryMessages
+ with   before [ previous_parent;
+         Go:
+            if (lm_n == 1 && lm_o has supporter) {
+                print "(first getting off ", (the) lm_o, ")^";
+                previous_parent = parent(player);
+                keep_silent = true; <Exit>; keep_silent = false;
+                if (player in parent(previous_parent)) <<Go noun>>;
+                rtrue;
+            } else if (lm_n == 2) {
+                "You don't need (or want) to go that way.";
+            }
+        ];
+Include "VerbLib";
+Include "MoveClass";
+
+Include ">Locations";
+
+[ DrawStatusLine width posa posb posc hours minutes;
+    @split_window 1;
+    @set_window 1;
+    @set_cursor 1 1;
+    style reverse;
+    
+    hours = the_time/60;
+    minutes = the_time-(hours*60);
+    
+    width = 0->33;
+    posa = width-26;
+    posb = width-13;
+    posc = width-44;
+    
+    spaces (width);
+    @set_cursor 1 2; PrintShortName(location);
+    if (width > 76) {
+        @set_cursor 1 posa; print "", hours, ":", minutes;
+        @set_cursor 1 posc; print "Date: ", month, "/", day, "/", year;
+        @set_cursor 1 posb; print "Moves: ", sline2;
+    }
+    if (width > 63 && width <= 76) {
+     @set_cursor 1 posb; print sline1, "/", sline2;
+    }
+    @set_cursor 1 1; style roman; @set_window 0;
+];
+
+[ TwoWay x dp1 dp2 y;
+    y = x.dp1; if (metaclass(y) == Object && y ofclass Room) y.dp2 = x;
+    y = x.dp2; if (metaclass(y) == Object && y ofclass Room) y.dp1 = x;
+];
+
+[ Initialise x;
+    notify_mode = false;
+    SetTime(60 * 12 + 30, 30);
+    StartDaemon(Sun);
+    
+    player = CustomPlayer;
+    location = Meadow;
+    
+    StartDaemon(monarch_butterfly);
+    NPC_Path(monarch_butterfly, RANDOM_MOVE, 80);
+    StartDaemon(swallowtale_butterfly);
+    NPC_Path(swallowtale_butterfly, RANDOM_MOVE, 80);
+    
+    objectloop (x ofclass Room) {
+        TwoWay(x, n_to, s_to);   TwoWay(x, e_to, w_to);
+        TwoWay(x, ne_to, sw_to); TwoWay(x, nw_to, se_to);
+        TwoWay(x, u_to, d_to);   TwoWay(x, in_to, out_to);
+    }
+    print "You are a traveler, exploring the Otherworld, a glorious,
+        free-ranging place barely settled and not ruled by any law except
+        Mother Nature's. Your goal is to explore and map as much of it
+        as you can. [For more info about the game, use ABOUT]^^Welcome to... ";
+];
+
+Include "Grammar";
+! Grammar stuff...
+Verb 'ride' = 'climb';
+Extend 'climb'
+    * 'onto' noun                       -> Climb
+    * 'on' noun                         -> Climb;
+
+[ ChopSub;
+    if (noun ofclass Plant && second ofclass Weapon)
+        <<Attack noun>>;
+    else if (~(noun ofclass Plant))
+        print_ret "You can't chop that down.";
+    else
+        print_ret "You can't use that to chop with.";
+];
+
+Extend 'chop' first
+    * noun 'with' noun                  -> Chop
+    * noun 'down' 'with' noun           -> Chop;
+
+Verb 'talk' = 'tell';
+Verb 'sooth' = 'tell';
+
+Extend 'tell'
+    * 'to' noun                         -> Tell;
+
+Extend 'speak'
+    * 'to' noun                         -> Tell;
+
+Extend 'sing'
+    * 'to' noun                         -> Sing;
+
+Extend 'drink' first
+    * 'from' noun                       -> Drink
+    * noun 'from' noun                  -> Drink reverse;
+
+
+[ HelpSub;
+    "^Credits:^
+    Programming, writing, and some location design was done by:
+    Christopher Dumas.^
+    Some writing, and most of the location design, and the playtesting
+    was done by: Christina Dumas.^
+    ^About:^
+    You get two points for discovering a new location. The only
+    way to score in this game is to explore, so for higher scores try
+    to find hidden locations or blocked locations.
+    Scoring is not important in this game as much as just exploring
+    and having fun are, so your score is not displayed in the
+    statusline. Instead, type SCORE to see your score.";
+];
+Verb 'about' 'help'
+    *                                   -> Help;
+
+Verb 'dismount' = 'exit';
+Verb 'rest' = 'wait';
+Verb 'catch' = 'take';
+Verb 'grab' = 'take';
+
+Verb 'get'
+    * 'off'                             -> Exit;

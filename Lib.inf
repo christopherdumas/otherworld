@@ -1,0 +1,270 @@
+!! This file contains common classes and procedures.
+
+[ DeathMessage;
+    if (deadflag == 3)
+        print "You've died, blood pouring from your grevious wounds";
+    else if (deadflag == 4)
+        print "You've died of thirst";
+    else if (deadflag == 5)
+        print "You've died of hunger";
+    else if (deadflag == 6)
+        print "You've died of fatigue";
+];
+
+Class   ScoredRoom
+ class  Room
+ has    scored;
+
+Class   WindowRoom
+ class  ScoredRoom
+ with   description "A featureless, empty room, apart from a small
+            north window that lets light flood in.",
+        window_dir n_obj,
+        compass_look [obj;
+            if (obj == window_dir)
+                print_ret (string) location.(obj.door_dir).description;
+        ],
+ has    light;
+
+Class   Scenic
+ has    scenery;
+
+Class   Exterior
+ class  ScoredRoom
+ with   description "A grassy meadow.",
+        compass_look [obj;
+            if (obj == n_obj || obj == ne_obj || obj == nw_obj
+                || obj == s_obj || obj == se_obj || obj == sw_obj
+                || obj == e_obj || obj == w_obj)
+                print_ret "In that direction, ", (string)
+                    location.(obj.door_dir).description;
+            else rfalse;
+        ];
+
+! To activate random move, do:
+! StartDaemon(usher);
+! PC_Path(usher, RANDOM_MOVE|AIMED_MOVE|PRESET_MOVE, 80);
+Class   NPC
+ class  MoveClass
+ with   description "A rather nondescript looking townsperson.",
+        walkon "shows up",
+        walkoff "walks away",
+ has    animate male;
+
+[ DescribeTameness x;
+    switch (x) {
+     0: return "very wary";
+     1: return "a little wary";
+     2: return "pretty shy";
+     3: return "a little shy";
+     4: return "cautiously freindly";
+     5: return "freindly";
+     6: return "a bit trusting";
+     7: return "pretty trusting";
+     8: return "trusting";
+     9: return "very trusting";
+     10: return "tame";
+     11: return "very tame";
+     12: return "extremely tame";
+     default: return "loving";
+    }
+];
+
+Class   Sea
+ class  Exterior
+ with   before [;
+         Go:
+            if (location.(noun.door_dir)() ofclass Sea) {
+                if (player notin horse || player notin raft) {
+                    print "You're not a swimmer.";
+                    return 2;
+                } else if (player in horse) {
+                    if (horse.tamelevel > 10) {
+                        print "You slowly coax the horse into the
+                            water. It turns out to be a strong swimmer.";
+                        return 1;
+                    } else {
+                        print "The horse shies away from the water,
+                            obivously not very confident in you.";
+                        return 2;
+                    }
+                } else if (player in raft) {
+                    print "You push off carefully from shore onto the lake,
+                        feeling small in your ramshackle raft.";
+                    return 1;
+                }
+            } else return 1;
+        ],
+        description [;
+            "", (The) child(self), " stretches on into the distance.";
+        ];
+
+Class   RideableNPC
+ class  NPC
+ with   tamed false,
+        tamelevel 0,
+        initial [;
+            NPC_Path(self, RANDOM_MOVE, 80);
+            "", (A) self, " stands here placidly."; ],
+        life [;
+         Order: print_ret (The) self, " looks confused.";
+         Tell, Ask, Answer:
+            self.tamelevel = self.tamelevel + 2;
+            print (The) self, " seems ",
+                (string) DescribeTameness(self.tamelevel), ".";
+            if (self.tamelevel >= 10) self.tamed = true;
+            rtrue;
+         Kiss:
+            <<Sing>>;
+        ],
+        before [;
+         Go:
+            if (self.tamed)
+                return 1;
+            else {
+                print "The horse refuses to budge.";
+                return 2;
+            }
+            
+         Climb: <<Enter self>>;
+         Enter:
+            if (self.tamed) {
+                print "You climb onto the ", (the) self, ".^";
+                move player to self;
+                rtrue;
+            } else {
+                player.health--;
+                print "You climb onto ", (the) self, ", but it throws
+                    you off!^";
+                style bold;
+                StartDaemon(self);
+                print_ret "^[You are now ",
+                    (string) DescribeStat(player.health), " healthy.]^";
+            }
+            
+         Receive:
+            if (noun == player) {
+                <<Enter self>>;
+            } else if (noun has edible) {
+                remove noun;
+                print_ret (The) self, " voraciously eats the ", (the)
+                 noun, ".^";
+            } else {
+                print_ret "It wouldn't know what to do with that.^";
+            }
+            
+         Touch, Rub, Show:
+            StopDaemon(self);
+            self.tamelevel++;
+            print (The) self, " seems ",
+                (string) DescribeTameness(self.tamelevel), ".^";
+            if (self.tamelevel >= 10) self.tamed = true;
+            rtrue;
+            
+         Jump, Mild, WakeOther, Tie, JumpOver:
+            self.tamelevel--;
+            print_ret (The) self, " is startled. After awhlie, it seems to
+                ", (string) DescribeTameness(self.tamelevel), ".^";
+            
+         Cut, Burn, Dig, Squeeze, Strong, Dig, Blow, Attack, Swing,
+         ThrowAt, Push, Pull, PushDir:
+            self.tamelevel = 0;
+            StartDaemon(self);
+            print_ret (The) self, " is extremely startled! It loses
+                its trust in you.^";
+        ],
+        react_before [;
+         Sing:
+            StopDaemon(self);
+            self.tamelevel = self.tamelevel + 3;
+            print (The) self, " seems ",
+                (string) DescribeTameness(self.tamelevel), ".";
+            if (self.tamelevel >= 10) self.tamed = true;
+            rtrue;
+        ],
+        react_after [;
+         Exit,GetOff:
+            print (The) self, " looks at you.";
+            rfalse;
+        ],
+ has    open enterable;
+
+Class   Tool;
+
+Class   SharpTool
+ class  tool
+ with   sharpness;
+
+Class   Weapon
+ class  SharpTool
+ with   attack;
+
+Class   Landmark
+ with   description "A rather tall peice of rock.",
+        found_in [; return location ofclass Exterior; ],
+ has    scenery;
+
+! Make choppable in fractions like Liquid
+Class   Plant
+ class  Scenic
+ with   description "A leafy grean plant.",
+        short_name "plant",
+        tall false,
+        rigid false,
+        chopped 4,
+        felled false,
+        before [;
+         Attack, Cut:
+            if (second ofclass SharpTool) {
+                self.chopped--;
+                if (self.chopped > 0) "You chop at the tree.";
+                else "You chop most of the way through the tree,
+                leaving a tiny peice to hold it up until you push it over.";
+            }
+         Push: "What directon would you push it?";
+         PushDir:
+            if (second == n_obj && self.chopped == 0) {
+                self.felled = true;
+                "", (The) self, " falls over slowly, making loud
+                    cracking noises.";
+            } else {
+                if (self.chopped == 4)
+                    "You'll need to actually chop that ", (name) self, ".";
+                else if (self.chopped >= 2)
+                    "You'll need to chop that ", (name) self, " a couple more times.";
+                else if (self.chopped == 1)
+                    "One more swing!";
+            };
+            rtrue;
+         PutOn:
+            if (self.tall) {
+                if (real_location == self) {
+                    print "You carefully place ", (the) noun, " on
+                        a branch.";
+                    rfalse;
+                } else {
+                    print "You can't reach far enough up to put that
+                        in the ", (the) self, ". Maybe try climbing?";
+                    rtrue;
+                }
+            } else if (self.rigid) rfalse;
+            else rtrue;
+         Climb: <<Enter self>>;
+         Enter:
+            if (self.rigid) {
+                print "You climb ", (the) self, ".";
+                move player to self;
+            } else {
+                print "You would crush it!";
+            }
+            rtrue;
+         GetOff:
+            if (self.tall) {
+                print "You carefully jump off, landing on the
+                    ground.";
+            } else {
+                print "You hop down.";
+            }
+            move player to parent(self);
+        ],
+ has    enterable supporter transparent;

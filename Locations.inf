@@ -1,0 +1,386 @@
+Include ">Lib";
+Include ">World";
+!! This file contains locations
+Attribute grassy;
+Attribute canyon;
+
+Object  raft "raft";
+
+Object  sky "sky",
+ class  Landmark
+ with   name 'sky',
+        article "the",
+        description [;
+            switch (Weather.current_weather.weather_num) {
+             0: "Grey and largly blotted out by the snow
+                falling out of it.";
+             1: "A crystal, vivid, cold blue with no clouds or
+                birds in sight.";
+             2: "Dark, sick blue, with water pouring down
+                from grey, ugly clouds.";
+             3: "A beautiful, satfire blue sky empty of any
+                blemish besides a few, thin and whispy clouds, and a few
+                dark spots wheeling in the air.";
+            }
+        ];
+
+Object  grass "grass"
+ class  Plant
+ with   name 'grass',
+        description "Long, growing, waving, green, lovely grass seems to reach out to
+            the sun in joyful song.",
+        short_name "grass",
+        article "some",
+        found_in [; return location has grassy; ],
+ has    pluralname;
+
+
+! The Forest/Meadow
+Object  Meadow "Meadow"
+ class  Exterior
+ with   description "A grassy meadow, sprinkled here and there by
+            small trees and bushes. To the east and west the forest
+            darkens and decends down the side of the hill that this meadow
+            covers. The meadow ends to the north.",
+        n_to CanyonEdge,
+        e_to EastForest,
+        w_to WestForest,
+ has    grassy;
+
+Object  -> monarch_butterfly "monarch butterfly"
+ class  NPC
+ with   name 'butterfly' 'monarch',
+        description "A beautiful, delicate monarch butterfly with
+            orange wings dotted with deep black. It flutters like a peice of
+            paper in the wind.",
+        walkon "circles in",
+        walkoff "flutters off",
+        before [;
+         Take:
+            if (player.fatigue < 5) {
+                move self to player;
+                "^Lighteningly quick, you lash out your hand and catch
+                the butterfly!^";
+            }
+        ],
+ has    neuter;
+
+Object  -> swallowtale_butterfly "swallowtale butterfly"
+ class  NPC
+ with   name 'butterfly' 'swallowtale',
+        description "A perfect specimin of a swallowtale butterfly:
+            pale yellow wings edged in black in almost the shape of a
+            crescent. It flutters about purposefully.",
+        walkon "circles in",
+        walkoff "flutters off",
+        before [;
+         Take:
+            if (player.fatigue < 5) {
+                move self to player;
+                "^Lighteningly quick, you lash out your hand and catch
+                the butterfly!^";
+            }
+        ],
+ has    neuter;
+
+Object  -> trees "trees"
+ class  Plant
+ with   name 'trees',
+        description "Small leafy green trees. Freindly and nonthreatening.",
+        short_name "trees",
+        article "some",
+ has    pluralname;
+
+Object  -> bushes "bushes"
+ class  Plant
+ with   name 'bushes',
+        description "Dark green, knarled and twisted. They look like
+            dwarves, perhaps?",
+        short_name "bushes",
+        article "some",
+ has    pluralname;
+
+Object  -> horse "horse"
+ class  RideableNPC
+ with   name 'horse' 'steed' 'animal',
+        description [;
+            "A beautiful bay horse with a rich, red body and a dark,
+            black mane and tail. It has white stockings on its legs, and a thin
+            blaze on its forehead. It looks ", (string)
+                DescribeTameness(self.tamelevel), ". ";
+        ],
+        each_turn [;
+            if (turns % 4 == 0 && ~self.tamed)
+                print_ret (string) random("^The horse flicks its tail.", "^The
+                                          horse neighs softly to itself.", "^The horse shifts positions, sidling
+                                          away from you slightly.", "^The horse
+                                          nibbles on the grass.");
+        ],
+ has    female;
+
+Object  WestForest "Western Forest Edge"
+ class  Exterior,
+ with   description "A quiet, peaceful forest, with tall redwoods on
+            all sides dimming the light that shines down through
+            their leafy canopies. The undergrowth is sparse or
+            non-existant here. Instead, the ground is covered in
+            fallen leaves, limestone rock, and dirt. The forest
+            peters out to the north, and a small clearing begins
+            southwards. West, you hear the light-hearted gurgle of a
+            small stream.",
+        s_to CabinEntrance,
+        w_to StreamToLake,
+        n_to CanyonEdge2;
+
+Object  -> tall_trees "tall trees"
+ class  Plant
+ with   name 'trees' 'redwoods',
+        description "Towering, beautiful, ancient: these redwoods
+            practically secrete quiet wisdom.",
+        short_name "redwoods",
+        article "some",
+ has    pluralname;
+
+Object  CabinEntrance "Cabin Entrance"
+ class  Exterior
+ with   description "Here, in a small clearing, stands a ramshackle
+            cabin, south of you. It appears to be long deserted, and
+            is probably emptied of anything remotely useful. It's
+            door has been ripped off, and taken who knows where.
+            West, you hear the light-hearted gurgle of a small
+            stream.",
+        in_to Cabin,
+        s_to Cabin,
+        w_to Stream,
+ has    grassy;
+
+Object  Stream "By Steam"
+ class  Exterior
+ with   description "Here the forest is largely the same as all around,
+            except for a steady, small stream that babbles its way through a
+            little ditch of rocks and dirt that it has eroded for itself. The
+            stream runs from the north towards the lower land south.",
+        n_to StreamToLake,
+        s_to MuddyPool;
+
+Object  -> tiny_stream "tiny stream"
+ class  Liquid
+ with   infinite true,
+        name 'stream',
+        found_in Stream StreamToLake MuddyPool,
+        description "A simple, merry stream.",
+ has    clean;
+
+Object  StreamToLake "Stream From Lake"
+ class  Exterior
+ with   description "Here the lake, while mostly contained by a rocky
+            shore, spills out in a little waterfall down a rambling hill and into
+            a small, well-eroded ditch, turning into a friendly little
+            stream.";
+
+Object  MuddyPool "Muddy Pool (Stream's End)"
+ class  Exterior
+ with   description "Here, sadly, the stream has been blocked by a
+            worn-out door, which appears to have been ripped from its hinges. The
+            stream collects in a muddy pool against the door and the
+            surrounding trees.";
+
+Object  -> cabin_door "cabin door"
+ class  Scenic
+ with   description "A muddy, ugly, old door.",
+        before [;
+         Take, Push, Pull:
+            "The door is far to embedded in the mud for that.";
+        ];
+
+Object  Cabin "Deserted Cabin"
+ class  WindowRoom
+ with   window_dir n_obj,
+        description "Inside, the cabin is even more forboding and
+            sad. Nails stick out of the wall where shelves and
+            anything that was hung there had been ripped off. The
+            wooden boards that make up the walls and roof are bowed
+            and splintered, and the brick fireplace has been almost
+            completely dismantled. A rusty axe lies in a corner, its
+            handle molded over.";
+
+Object  -> fireplace "brick fireplace"
+ class  Scenic
+ with   name 'brick' 'fireplace' 'hearth',
+        description "While it may have been well-built at some time,
+            it is useless in its partially dismantled state. Bricks
+            lay around it like bones.";
+
+Object  -> rusty_axe "rusty axe"
+ class  SharpTool
+ with   name 'axe' 'hatchet' 'rusty',
+        sharpness 3,
+        description "A rusty but still useable axe. Whoever came here
+            last didn't take it because of its moldy handle, probably. It lies in
+            a corner, forlorn, the only useful thing left.";
+
+Object  EastForest "Eastern Forest Edge"
+ class  Exterior,
+ with   description "The forest darkens, the trees grow more knarled
+            and squat, with dark green leaves the size of dinner
+            plates. The forest is impenitrable in all directions except
+            west. Grey and brown leaves thinly cover the ground.";
+
+Object  -> dark_trees "dark trees"
+ class  Plant
+ with   name 'trees' 'dark',
+        description "Smaller in stature than redwoods, and more
+            threatening. Huge, dark leaves and knarled roots give the trees a
+            troll-like appearance.",
+        short_name "dark trees",
+        article "some",
+ has    pluralname;
+
+Object  -> leaves "leaves"
+ class  Plant
+ with   name 'leaves' 'covering' 'grey' 'gray',
+        description "Grey, partially decomposed leaves.",
+        short_name "leaves",
+        article "some",
+        react_before [;
+         Rub, Push, Pull, Take, LookUnder:
+            print "As you clear away the leaves, you notice a small
+                tunnel that was covered by leaves caught in vines. You move the vines
+                out of the way, displaying a dark, damp hole leading downward.";
+            parent(self).d_to = Cavern;
+        ],
+ has    pluralname;
+
+! The Caverns
+Object  Cavern "Underground Cavern"
+ class  Room
+ with   after [;
+         Go:
+            if (self hasnt visited) {
+                print "You slip and slide down the tunnel, head
+                    bumping and scraping the tunnel's dirt roof. Finally, you land on
+                    your knees in a huge cavern.";
+                rfalse;
+            } else rfalse;
+        ],
+        description "A huge, lofty cavern displaying the ancient,
+            austere grandeur of ancient time and slowly carved
+            history. Water drips from the roof, and strange shapes in the rock
+            faces that make up the floor and walls twist and contort in oddly
+            beautiful patterns. A passage, low and small, leads north, and
+            the tunnel leads upwards (a difficult climb but doable).";
+
+! Canyon Edge
+Object  CanyonEdge "Canyon's Edge"
+ class  Exterior
+ with   description "The meadow peters out, slowly changing to limestone
+            rock and light-colored, dusty dirt. Ahead of you the
+            canyon opens its maw in the ground, blocking your path.",
+ has    canyon;
+
+Object  CanyonEdge2 "West of Canyon's Edge"
+ class  Exterior
+ with   description "The canyon extends east and west.",
+        e_to CanyonEdge,
+ has    canyon;
+
+Object  -> pine_tree "pine tree"
+ class  Plant
+ with   name 'tree' 'pine' 'tall',
+        initial "A particularly adventurus and very tall tree grasps the edge
+            of the canyon.",
+        short_name "tree",
+        after [;
+         PushDir:
+            if (self.chopped == 0) "The tree falls across the chasm.";
+        ],
+        tall true,
+        rigid true;
+
+Object  limestone_canyon "limestone canyon"
+ with   name 'limestone' 'canyon' 'crag',
+        description "A deep, wide limestone crevase in the ground, carved out
+            by a river untold ages ago. Since then the wind has added its own
+            touches and improvements, and continues to do so, as you can tell by
+            the sound of it's whipping around you.",
+        found_in [; return location has canyon; ],
+        react_before [;
+         Listen:
+            "The wind howls and hoots and whines and whisles around
+            you.";
+         Go:
+            if (noun == n_obj) {
+                if (pine_tree.felled) {
+                    print "You walk percariously on your makeshift
+                        bridge across the chasm.";
+                    rfalse;
+                } else <<Enter self>>;
+            } else rfalse;
+        ],
+        before [;
+         Receive, ThrowAt:
+            "", (The) noun, " hurtles silently into the void below. A few
+                minutes later you hear a faint crash echoed back at
+                you.";
+            
+         Enter, GoIn, Jump, JumpOver:
+            deadflag = 3;
+            "You plummet through the silent void, admiring the
+            beautiful craftmanship of Father Time. Cracking your
+            skull against an outcrop of rock far below.";
+            
+         Climb:
+            print "You begin the decent to the floor of the canyon, but your
+                strength gives way about halfway down.";
+            <<Enter self>>;
+        ],
+ has    scenery;
+
+! The Lake
+Object  CanyonsLake "Canyon-Side Lake"
+ class  Sea
+ with   description "This is the shallow end of a vast, fog-bound lake. A
+            few fish flop here and there, and the water is clear and
+            cold.",
+        n_to LakeCenter,
+        ne_to Lake1,
+        nw_to Lake2,
+        e_to Lake3,
+        w_to Lake4;
+
+Object  Lake1 "Northeast Lake"
+ class  Sea;
+
+Object  Lake2 "Northwest Lake"
+ class  Sea;
+
+Object  Lake3 "East Lake"
+ class  Sea;
+
+Object  Lake4 "West Lake"
+ class  Sea;
+
+Object  LakeCenter "LakeCenter"
+ class  Sea
+ with   description "Northward again you can see the shore of the
+            lake.",
+        n_to LakeShore;
+
+Object  LakeShore
+ class  Exterior
+ with   description "Largely sandy and forgettable.";
+
+Object  -> vast_lake "vast lake"
+ class  Scenic Liquid
+ with   description "A vast, still lake, disturbed only by the ripples of
+            swimming fish.",
+        short_name "lake",
+        article "the",
+        found_in LakeCenter Lake1 Lake2 Lake3 Lake4 StreamToLake,
+        infinite true,
+ has    clean transparent;
+
+Object  -> -> fish
+ with   description "Slippery, slivery, slim fish flit about the lake,
+            just below the surface.",
+ has    animate neuter;
