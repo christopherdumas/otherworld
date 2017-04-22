@@ -17,7 +17,7 @@ Object  LibraryMessages
                 if (player in parent(previous_parent)) <<Go noun>>;
                 rtrue;
             } else if (lm_n == 2) {
-                "You don't need (or want) to go that way.";
+                "You don't need to go that way.";
             }
         ];
 Include "VerbLib";
@@ -88,8 +88,14 @@ Extend 'climb'
     * 'onto' noun                       -> Climb
     * 'on' noun                         -> Climb;
 
+[ ContainsClass o c x;
+    objectloop (x && x in o && x ofclass c)
+        return x;
+];
+
 [ ChopSub;
-    if (noun ofclass Plant && second ofclass Weapon)
+    if (noun ofclass Plant && (second ofclass SharpTool ||
+                               ContainsClass(player, SharpTool)))
         <<Attack noun>>;
     else if (~(noun ofclass Plant))
         print_ret "You can't chop that down.";
@@ -99,6 +105,8 @@ Extend 'climb'
 
 Extend 'chop' first
     * noun 'with' noun                  -> Chop
+    * noun                              -> Chop
+    * noun 'down'                       -> Chop
     * noun 'down' 'with' noun           -> Chop;
 
 Verb 'talk' = 'tell';
@@ -119,18 +127,16 @@ Extend 'drink' first
 
 
 [ HelpSub;
-    "^Credits:^
-    Programming, writing, and some location design was done by:
-    Christopher Dumas.^
-    Some writing, and most of the location design, and the playtesting
-    was done by: Christina Dumas.^
-    ^About:^
-    You get two points for discovering a new location. The only
-    way to score in this game is to explore, so for higher scores try
-    to find hidden locations or blocked locations.
-    Scoring is not important in this game as much as just exploring
-    and having fun are, so your score is not displayed in the
-    statusline. Instead, type SCORE to see your score.";
+    "^Credits:^ Programming, writing, and location desgin by: Christopher Dumas.^ Some writing,
+    and spotty location design, and the playtesting was done
+    by: Christina Dumas.^ ^About:^ You get two points for
+    discovering a new location. The only way to score in this game
+    is to explore, so for higher scores try to find hidden locations
+    or blocked locations. Scoring is not important in this game as
+    much as just exploring and having fun are, so your score is not
+    displayed in the statusline. Instead, type SCORE to see your
+    score. This game rewards close examination. Use EXAMINE or X to
+    examine things, and do it often.";
 ];
 Verb 'about' 'help'
     *                                   -> Help;
@@ -140,5 +146,22 @@ Verb 'rest' = 'wait';
 Verb 'catch' = 'take';
 Verb 'grab' = 'take';
 
-Verb 'get'
+Extend 'get'
     * 'off'                             -> Exit;
+
+Extend 'dig'
+    * noun 'out'                        -> Dig;
+
+Verb 'pour'
+    * noun 'on' noun                    -> PutOn
+    * noun 'onto' noun                  -> PutOn;
+
+[ FeelAroundSub;
+    if (real_location has light)
+        "You feel nothing particularly unexpected. Anyway, you can
+        SEE, so why feel?";
+];
+
+Extend 'touch' first
+    * 'around'                          -> FeelAround
+    *                                   -> FeelAround;

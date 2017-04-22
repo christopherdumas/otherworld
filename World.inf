@@ -1,6 +1,17 @@
 ! This file contains world rules, daemons, scenery, and universal
 ! items.
 
+[ DeathMessage;
+    if (deadflag == 3)
+        print "You've died, blood pouring from your grevious wounds";
+    else if (deadflag == 4)
+        print "You've died of thirst";
+    else if (deadflag == 5)
+        print "You've died of hunger";
+    else if (deadflag == 6)
+        print "You've died of fatigue";
+];
+
 !! World Rules
 Attribute clean;
 Attribute filter;
@@ -8,7 +19,7 @@ Attribute filter;
 Class   Liquid(16)
  with   name 'water',
         article "some",
-        fraction 2,
+        fraction 1,
         short_name [;
             if (self has clean) print "clean water (1/", self.fraction, ")";
             else                print "dirty water (1/", self.fraction, ")";
@@ -71,7 +82,7 @@ Class   Liquid(16)
         ];
 
 Class   Bucket
- with   before [ x y; x = child(self);
+ with   before [ x y n; x = child(self);
          Drink:
             print "Drinking from ", (the) self, "... ";
             <<Drink (child(self))>>;
@@ -98,9 +109,12 @@ Class   Bucket
             }
          Fill:
             if (~~x) {                          ! is there a water source in scope?
-                objectloop (x ofclass Liquid && x.infinite && TestScope(x)) {
-                    x = Liquid.create(); move x to self;
-                    "You fill ", (the) self, " with ", (name) x, ".";
+                objectloop (x ofclass Liquid && x.infinite &&
+                            TestScope(x)) {
+                    n = Liquid.create();
+                    if (x has clean) give n clean;
+                    move n to self;
+                    "You fill ", (the) self, " with ", (name) n, ".";
                 }
                 rfalse;                         ! no water available
             }
@@ -146,19 +160,19 @@ Global year = 1000;
 
 Constant SUNRISE = 360;  ! i.e. 6 am
 Constant SUNSET = 1140;  ! i.e. 7 pm
-Constant MAPPING = true; ! Remember to turn this off!
+Constant USE_SUN = false; ! Remember to turn this on!
 
 Object  Sun "sun"
  with   name 'sun',
         found_in [;
-            if (real_location ofclass Exterior) rtrue;
+            if (location ofclass Exterior) rtrue;
         ],
         before [;
          Examine: ;
-         default: "The sun is too far away.";
+         default: "The sun is much too far away.";
         ],
         daemon [;
-            if (~MAPPING) {
+            if (USE_SUN) { ! Sun ignores this?
                 if (the_time >= SUNRISE && the_time < SUNSET) {
                     if (self has absent) {
                         give self ~absent;
@@ -289,6 +303,9 @@ Object  CustomPlayer "(you)"
                 self.fatigue = 0;
                 "You wake up slowly, feeling rested and relaxed.";
             } else rfalse;
+         Go:
+            if (self notin horse)
+                self.fatigue = self.fatigue + 2;
         ],
         each_turn [;
             if (self.fatigue > 528) deadflag = 6;
@@ -300,8 +317,8 @@ Object  CustomPlayer "(you)"
             self.hunger++;
             self.fatigue++;
             
-            if (self.thirst > 6 || self.hunger > 240
-                || self.fatigue > 60)
+            if (self.thirst > 72 || self.hunger > 504
+                || self.fatigue > 264)
                 "^[You should check your stats. Use EXAMINE ME.]";
         ],
  has    animate concealed proper transparent;

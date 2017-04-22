@@ -1,18 +1,25 @@
 !! This file contains common classes and procedures.
-
-[ DeathMessage;
-    if (deadflag == 3)
-        print "You've died, blood pouring from your grevious wounds";
-    else if (deadflag == 4)
-        print "You've died of thirst";
-    else if (deadflag == 5)
-        print "You've died of hunger";
-    else if (deadflag == 6)
-        print "You've died of fatigue";
-];
-
+! Rooms
 Class   ScoredRoom
  class  Room
+ with   before [ way;
+         Go:
+            way = location.(noun.door_dir)();
+            if (way ofclass Sea) {
+                if (~~(location ofclass RideableObject)) {
+                    print "You're not a swimmer.";
+                    return 2;
+                } else if (player in raft) {
+                    print "You push off carefully from shore onto the lake,
+                        feeling small in your ramshackle raft.";
+                    return 1;
+                }
+            } else if (location ofclass Sea) {
+                print "You push onto shore and get off your raft.";
+                move player to self;
+                return 1;
+            } else return 0;
+        ],
  has    scored;
 
 Class   WindowRoom
@@ -26,21 +33,27 @@ Class   WindowRoom
         ],
  has    light;
 
-Class   Scenic
- has    scenery;
-
 Class   Exterior
  class  ScoredRoom
  with   description "A grassy meadow.",
         compass_look [obj;
-            if (obj == n_obj || obj == ne_obj || obj == nw_obj
-                || obj == s_obj || obj == se_obj || obj == sw_obj
-                || obj == e_obj || obj == w_obj)
+            if (obj ~= d_obj && obj ~= u_obj)
                 print_ret "In that direction, ", (string)
                     location.(obj.door_dir).description;
             else rfalse;
         ];
 
+Class   RideableObject
+ has    enterable;
+
+Class   Sea
+ class  Exterior
+ with   description [;
+            "", (The) child(self), " stretches on into the distance,
+                shining blue, sparkling in the sunlight.";
+        ];
+
+! NPCs
 ! To activate random move, do:
 ! StartDaemon(usher);
 ! PC_Path(usher, RANDOM_MOVE|AIMED_MOVE|PRESET_MOVE, 80);
@@ -69,35 +82,6 @@ Class   NPC
      default: return "loving";
     }
 ];
-
-Class   Sea
- class  Exterior
- with   before [;
-         Go:
-            if (location.(noun.door_dir)() ofclass Sea) {
-                if (player notin horse || player notin raft) {
-                    print "You're not a swimmer.";
-                    return 2;
-                } else if (player in horse) {
-                    if (horse.tamelevel > 10) {
-                        print "You slowly coax the horse into the
-                            water. It turns out to be a strong swimmer.";
-                        return 1;
-                    } else {
-                        print "The horse shies away from the water,
-                            obivously not very confident in you.";
-                        return 2;
-                    }
-                } else if (player in raft) {
-                    print "You push off carefully from shore onto the lake,
-                        feeling small in your ramshackle raft.";
-                    return 1;
-                }
-            } else return 1;
-        ],
-        description [;
-            "", (The) child(self), " stretches on into the distance.";
-        ];
 
 Class   RideableNPC
  class  NPC
@@ -129,17 +113,20 @@ Class   RideableNPC
          Climb: <<Enter self>>;
          Enter:
             if (self.tamed) {
-                print "You climb onto the ", (the) self, ".^";
+                print "You climb onto the ", (the) self, ".";
                 move player to self;
                 rtrue;
             } else {
                 player.health--;
                 print "You climb onto ", (the) self, ", but it throws
-                    you off!^";
-                style bold;
+                    you off!";
                 StartDaemon(self);
-                print_ret "^[You are now ",
-                    (string) DescribeStat(player.health), " healthy.]^";
+                style bold;
+                print "^[You are now ",
+                    (string) DescribeStat(player.health), "
+                    healthy.]";
+                style roman;
+                rtrue;
             }
             
          Receive:
@@ -157,21 +144,21 @@ Class   RideableNPC
             StopDaemon(self);
             self.tamelevel++;
             print (The) self, " seems ",
-                (string) DescribeTameness(self.tamelevel), ".^";
+                (string) DescribeTameness(self.tamelevel), ".";
             if (self.tamelevel >= 10) self.tamed = true;
             rtrue;
             
          Jump, Mild, WakeOther, Tie, JumpOver:
             self.tamelevel--;
             print_ret (The) self, " is startled. After awhlie, it seems to
-                ", (string) DescribeTameness(self.tamelevel), ".^";
+                ", (string) DescribeTameness(self.tamelevel), ".";
             
          Cut, Burn, Dig, Squeeze, Strong, Dig, Blow, Attack, Swing,
          ThrowAt, Push, Pull, PushDir:
             self.tamelevel = 0;
             StartDaemon(self);
             print_ret (The) self, " is extremely startled! It loses
-                its trust in you.^";
+                its trust in you.";
         ],
         react_before [;
          Sing:
@@ -181,14 +168,34 @@ Class   RideableNPC
                 (string) DescribeTameness(self.tamelevel), ".";
             if (self.tamelevel >= 10) self.tamed = true;
             rtrue;
+         Take:
+            if (real_location == self)
+                "You'll have to get off ", (the) self, " first. You don't
+                    have arms that long.";
         ],
         react_after [;
          Exit,GetOff:
             print (The) self, " looks at you.";
             rfalse;
         ],
- has    open enterable;
+ has    open enterable transparent;
 
+Class   CatchableNPC
+ class  NPC
+ with   walkon "circles in",
+        walkoff "flutters off",
+        before [;
+         Take:
+            if (player.fatigue < 5) {
+                move self to player;
+                "Lighteningly quick, you lash out your hand and catch
+                ", (the) self, "!";
+            } else "Try as you might, you can't quite catch ", (the)
+             self, ".";
+        ],
+ has    neuter;
+
+! Tools
 Class   Tool;
 
 Class   SharpTool
@@ -199,6 +206,10 @@ Class   Weapon
  class  SharpTool
  with   attack;
 
+! Fixtures
+Class   Scenic
+ has    scenery;
+
 Class   Landmark
  with   description "A rather tall peice of rock.",
         found_in [; return location ofclass Exterior; ],
@@ -208,19 +219,20 @@ Class   Landmark
 Class   Plant
  class  Scenic
  with   description "A leafy grean plant.",
-        short_name "plant",
         tall false,
         rigid false,
         chopped 4,
         felled false,
         before [;
          Attack, Cut:
-            if (second ofclass SharpTool) {
-                self.chopped--;
-                if (self.chopped > 0) "You chop at the tree.";
-                else "You chop most of the way through the tree,
-                leaving a tiny peice to hold it up until you push it over.";
+            self.chopped--;
+            if (self.chopped > 0) {
+                move Wood.create() to parent(self);
+                "You chop at the tree, in the process cutting a
+                branch off as well.";
             }
+            else "You chop most of the way through the tree,
+            leaving a tiny peice to hold it up until you push it over.";
          Push: "What directon would you push it?";
          PushDir:
             if (second == n_obj && self.chopped == 0) {
@@ -268,3 +280,8 @@ Class   Plant
             move player to parent(self);
         ],
  has    enterable supporter transparent;
+
+Class   Wood(10)
+ with   name 'branch' 'wood' 'log',
+        short_name "wood",
+        description "A simple branch, reasonably thick and wide.";
