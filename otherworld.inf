@@ -2,7 +2,7 @@ Constant Story "The Otherworld";
 Constant Headline "^By Christopher Dumas^";
 
 Constant ROOM_SCORE = 2;
-Constant MAX_SCORE = 600;
+Constant MAX_SCORE = 160;
 
 Replace DrawStatusLine;
 Statusline time;
@@ -75,10 +75,13 @@ Include ">Locations";
         TwoWay(x, ne_to, sw_to); TwoWay(x, nw_to, se_to);
         TwoWay(x, u_to, d_to);   TwoWay(x, in_to, out_to);
     }
-    print "You are a traveler, exploring the Otherworld, a glorious,
-        free-ranging place barely settled and not ruled by any law except
-        Mother Nature's. Your goal is to explore and map as much of it
-        as you can. [For more info about the game, use ABOUT]^^Welcome to... ";
+    print "A majestic wilderness nearly untouched by men until now.
+        You have come to see it and explore it, among the first few
+        to do so. You were given a hero's send-off and expect a
+        hero's welcome when you return with your carfully drawn map
+        of these strange lands. But along with the excitement of
+        exploration comes the danger. This is no cakewalk. The
+        Otherworld awaits...^^";
 ];
 
 Include "Grammar";
@@ -93,17 +96,17 @@ Extend 'climb'
         return x;
 ];
 
-[ ChopSub;
-    if (noun ofclass Plant && (second ofclass SharpTool ||
-                               ContainsClass(player, SharpTool)))
+[ ChopSub st; st = ContainsClass(player, SharpTool);
+    if (noun ofclass Plant && ~~st) {
+        if (~second) print "(with ", (the) st ,")";
         <<Attack noun>>;
-    else if (~(noun ofclass Plant))
+    } else if (~(noun ofclass Plant))
         print_ret "You can't chop that down.";
     else
         print_ret "You can't use that to chop with.";
 ];
 
-Extend 'chop' first
+Extend 'chop' replace
     * noun 'with' noun                  -> Chop
     * noun                              -> Chop
     * noun 'down'                       -> Chop

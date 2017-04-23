@@ -21,8 +21,8 @@ Class   Liquid(16)
         article "some",
         fraction 1,
         short_name [;
-            if (self has clean) print "clean water (1/", self.fraction, ")";
-            else                print "dirty water (1/", self.fraction, ")";
+            if (self has clean) print "clean water";
+            else                print "dirty water";
             rtrue;
         ],
         infinite false,
@@ -75,10 +75,8 @@ Class   Liquid(16)
                 with!";
         ],
         description [;
-            if (self has clean)
-                "Clean(ish) and drinkable.";
-            else
-                "Gross, thick, and ugly.";
+            "", (A) self, " filling 1/", self.fraction, " of ", (the)
+                parent(self), ".";
         ];
 
 Class   Bucket

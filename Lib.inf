@@ -9,7 +9,7 @@ Class   ScoredRoom
                 if (~~(location ofclass RideableObject)) {
                     print "You're not a swimmer.";
                     return 2;
-                } else if (player in raft) {
+                } else {
                     print "You push off carefully from shore onto the lake,
                         feeling small in your ramshackle raft.";
                     return 1;

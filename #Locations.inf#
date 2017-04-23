@@ -40,7 +40,8 @@ Object  Meadow "Meadow"
  class  Exterior
  with   description "A a simple, grassy meadow, as pure as the poets
             of old said they should be: full of simple flowers, bushes
-            and small stumpy trees. To the east and west the forest
+            and small stumpy trees. It practically exudes simple
+            pastoral delight! To the east and west the forest
             darkens and decends down the side of the hill that this meadow
             covers. The meadow ends to the north.",
         n_to CanyonEdge,
